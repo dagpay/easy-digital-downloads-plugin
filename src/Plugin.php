@@ -3,6 +3,8 @@
 namespace Ultraleet\DagpayEDD;
 
 use DagpayClient;
+use Exception;
+use stdClass;
 
 final class Plugin
 {
@@ -27,6 +29,7 @@ final class Plugin
         add_action('edd_dagpay_cc_form', '__return_false');
         add_filter('edd_settings_sections_gateways', [$this, 'filterRegisterGatewaySettingsSection']);
         add_filter('edd_settings_gateways', [$this, 'filterRegisterGatewaySettings']);
+        add_action('edd_gateway_dagpay', [$this, 'actionProcessPurchase']);
     }
 
     /**
@@ -72,13 +75,19 @@ final class Plugin
      */
     public function filterRegisterGatewaySettings(array $gatewaySettings): array
     {
-        $setupInfoText = __('When setting up your merchant integration environment, use the following URLs:',
-                'dagpay-edd') . '<br /><p>' .
+        $setupInfoText = __(
+                'When setting up your merchant integration environment, use the following URLs:',
+                'dagpay-edd'
+            ) . '<br /><p>' .
             __('Status URL', 'dagpay-edd') . ': <code>' . $this->getStatusURI() . '</code><br />' .
-            __('Browser redirect (SUCCESS)',
-                'dagpay-edd') . ': <code>' . $this->getRedirectSuccessURI() . '</code><br />' .
-            __('Browser redirect (CANCEL and FAIL)',
-                'dagpay-edd') . ': <code>' . $this->getRedirectFailURI() . '</code></p>';
+            __(
+                'Browser redirect (SUCCESS)',
+                'dagpay-edd'
+            ) . ': <code>' . $this->getRedirectSuccessURI() . '</code><br />' .
+            __(
+                'Browser redirect (CANCEL and FAIL)',
+                'dagpay-edd'
+            ) . ': <code>' . $this->getRedirectFailURI() . '</code></p>';
         $settings = [
             'dagpay_settings' => [
                 'id' => 'dagpay_settings',
@@ -155,9 +164,12 @@ final class Plugin
      */
     private function getRedirectSuccessURI(): string
     {
-        return add_query_arg([
-            'payment-confirmation' => 'dagpay',
-        ], get_permalink(edd_get_option('success_page', false)));
+        return add_query_arg(
+            [
+                'payment-confirmation' => 'dagpay',
+            ],
+            get_permalink(edd_get_option('success_page', false))
+        );
     }
 
     /**
@@ -171,13 +183,122 @@ final class Plugin
     }
 
     /**
+     * @param $purchaseData
+     */
+    public function actionProcessPurchase($purchaseData)
+    {
+        if (!wp_verify_nonce($purchaseData['gateway_nonce'], 'edd-gateway')) {
+            wp_die(
+                __('Nonce verification has failed', 'easy-digital-downloads'),
+                __('Error', 'easy-digital-downloads'),
+                ['response' => 403]
+            );
+        }
+        $paymentData = [
+            'price' => $purchaseData['price'],
+            'date' => $purchaseData['date'],
+            'user_email' => $purchaseData['user_email'],
+            'purchase_key' => $purchaseData['purchase_key'],
+            'currency' => edd_get_currency(),
+            'downloads' => $purchaseData['downloads'],
+            'user_info' => $purchaseData['user_info'],
+            'cart_details' => $purchaseData['cart_details'],
+            'gateway' => 'dagpay',
+            'status' => !empty($purchaseData['buy_now']) ? 'private' : 'pending',
+        ];
+        $paymentId = edd_insert_payment($paymentData);
+        if (!$paymentId) {
+            edd_record_gateway_error(
+                __('Payment Error', 'easy-digital-downloads'),
+                sprintf(
+                    __('Payment creation failed before sending buyer to DagPay. Payment data: %s', 'dagpay-edd'),
+                    json_encode($paymentData)
+                ),
+                $paymentId
+            );
+            edd_send_back_to_checkout('?payment-mode=' . $purchaseData['post_data']['edd-gateway']);
+        } else {
+            $client = $this->getClient();
+            $invoice = null;
+            try {
+                $invoiceId = $this->getInvoiceId($paymentId);
+                if ($invoiceId) {
+                    $invoice = $client->getInvoiceInfo($invoiceId);
+                }
+                if (!$invoice || !$this->isInvoiceUnpaid($invoice)) {
+                    $invoice = $this->createInvoice($paymentId, $purchaseData['price']);
+                    wp_redirect($invoice->paymentUrl);
+                    exit;
+                }
+            } catch (Exception $e) {
+                edd_record_gateway_error(
+                    __('Payment Error', 'dagpay-edd'),
+                    sprintf(
+                        __('Unable to create Dagpay invoice: %s', 'easy-digital-downloads'),
+                        json_encode($e->getMessage())
+                    )
+                );
+                edd_debug_log('Exception trying to create DagPay invoice: ' . $e);
+            }
+        }
+    }
+
+    /**
+     * Get Dagcoin invoice ID associated with payment.
+     *
+     * @param int $paymentId
+     * @return mixed
+     */
+    private function getInvoiceId(int $paymentId)
+    {
+        return get_post_meta($paymentId, '_dagcoin_invoice_id', true);
+    }
+
+    /**
+     * Check invoice paid status.
+     *
+     * @param stdClass $invoice
+     * @return bool
+     */
+    private function isInvoiceUnpaid(stdClass $invoice): bool
+    {
+        return !in_array($invoice->state, ['EXPIRED', 'CANCELLED', 'FAILED']);
+    }
+
+    /**
+     * Create new invoice via Dagpay API.
+     *
+     * @param int $paymentId
+     * @param $total
+     * @return array|mixed|object
+     */
+    public function createInvoice(int $paymentId, $total)
+    {
+        $client = $this->getClient();
+        $invoice = $client->createInvoice($paymentId, edd_get_currency(), $total);
+        $this->setInvoiceId($paymentId, $invoice->id);
+        return $invoice;
+    }
+
+    /**
+     * Associate Dagcoin invoice ID with payment.
+     *
+     * @param int $paymentId
+     * @param int $invoiceId
+     */
+    private function setInvoiceId(int $paymentId, int $invoiceId)
+    {
+        update_post_meta($paymentId, '_dagcoin_invoice_id', $invoiceId);
+    }
+
+    /**
      * Initialize Dagpay client if necessary and return it.
      *
      * @return DagpayClient
      */
     private function getClient(): DagpayClient
     {
-        if (! isset($this->client)) {
+        if (!isset($this->client)) {
             $settings = $this->getSettings();
             $this->client = new DagpayClient(
                 $settings['environmentId'],
@@ -197,7 +318,7 @@ final class Plugin
      */
     private function getSettings(): array
     {
-        if (! isset($this->settings)) {
+        if (!isset($this->settings)) {
             $mode = $this->getMode();
             $this->settings = [
                 'environmentId' => edd_get_option("dagpay_{$mode}_env_id"),
