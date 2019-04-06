@@ -3,6 +3,7 @@
 namespace Ultraleet\DagpayEDD;
 
 use DagpayClient;
+use EDD_Payment;
 use Exception;
 use stdClass;
 
@@ -30,6 +31,8 @@ final class Plugin
         add_filter('edd_settings_sections_gateways', [$this, 'filterRegisterGatewaySettingsSection']);
         add_filter('edd_settings_gateways', [$this, 'filterRegisterGatewaySettings']);
         add_action('edd_gateway_dagpay', [$this, 'actionProcessPurchase']);
+        add_action('init', [$this, 'actionVerifyPayment']);
+        add_filter('edd_payment_confirm_dagpay', [$this, 'filterConfirmPageContent']);
     }
 
     /**
@@ -277,6 +280,8 @@ final class Plugin
         $client = $this->getClient();
         $invoice = $client->createInvoice($paymentId, edd_get_currency(), $total);
         $this->setInvoiceId($paymentId, $invoice->id);
+        $note = sprintf(__('Dagcoin Invoice ID: %s', 'dagpay-edd'), $invoice->id);
+        edd_insert_payment_note($paymentId, $note);
         return $invoice;
     }
 
@@ -289,6 +294,80 @@ final class Plugin
     private function setInvoiceId(int $paymentId, int $invoiceId)
     {
         update_post_meta($paymentId, '_dagcoin_invoice_id', $invoiceId);
+    }
+
+    /**
+     * Listen for Dagpay status updates and verify payments.
+     */
+    public function actionVerifyPayment()
+    {
+        if (isset($_GET['edd-listener']) && $_GET['edd-listener'] == 'dagpay') {
+            edd_debug_log('DagPay IPN endpoint loaded');
+            $data = json_decode(file_get_contents('php://input'));
+            $client = $this->getClient();
+            $signature = $client->getInvoiceInfoSignature($data);
+            if ($signature != $data->signature) {
+                exit;
+            }
+            $paymentId = (int)$data->paymentId;
+            $payment = new EDD_Payment($paymentId);
+            switch ($data->state) {
+                case 'PAID':
+                case 'PAID_EXPIRED':
+                    edd_insert_payment_note($paymentId, __('Dagcoin Invoice has been paid', 'dagpay-edd'));
+                    edd_set_payment_transaction_id($paymentId, $data->id);
+                    edd_update_payment_status($paymentId, 'publish');
+                    break;
+                case 'CANCELLED':
+                    if (get_post_meta($paymentId, '_dagcoin_invoice_id_cancelled', true) === $this->getInvoiceId(
+                            $paymentId
+                        )) {
+                        delete_post_meta($paymentId, '_dagcoin_invoice_id_cancelled');
+                    } else {
+                        $payment->update_status('revoked');
+                        $payment->save();
+                    }
+                    edd_insert_payment_note($payment, __('Dagcoin Invoice has been cancelled', 'dagpay-edd'));
+                    break;
+                case 'EXPIRED':
+                    $payment->update_status('failed');
+                    $payment->save();
+                    edd_insert_payment_note($paymentId, __('Dagcoin Invoice has expired', 'dagpay-edd'));
+                    break;
+                case 'FAILED':
+                    $payment->update_status('failed');
+                    $payment->save();
+                    edd_insert_payment_note($paymentId, __('Dagcoin Invoice has failed', 'dagpay-edd'));
+                    break;
+            }
+            exit;
+        }
+    }
+
+    /**
+     * Shows "Purchase Processing" message for payments that are still pending on site return.
+     *
+     * @param string $content
+     * @return false|string
+     */
+    public function filterConfirmPageContent(string $content)
+    {
+        if (!isset($_GET['payment-id']) && !edd_get_purchase_session()) {
+            return $content;
+        }
+        edd_empty_cart();
+        $paymentId = isset($_GET['payment-id']) ? absint($_GET['payment-id']) : false;
+        if (!$paymentId) {
+            $session = edd_get_purchase_session();
+            $paymentId = edd_get_purchase_id_by_key($session['purchase_key']);
+        }
+        $payment = new EDD_Payment($paymentId);
+        if ($payment->ID > 0 && 'pending' == $payment->status) {
+            ob_start();
+            edd_get_template_part('payment', 'processing');
+            $content = ob_get_clean();
+        }
+        return $content;
     }
 
     /**
