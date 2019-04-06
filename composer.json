@@ -1,0 +1,20 @@
+{
+    "name": "ultraleet/dagpay-easy-digital-downloads",
+    "description": "Dagpay gateway for Easy Digital Downloads",
+    "type": "wordpress-plugin",
+    "license": "GPL2",
+    "authors": [
+        {
+            "name": "Rene Aavik",
+            "email": "renx81@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Ultraleet\\DagpayEDD\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.1"
+    }
+}
