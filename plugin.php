@@ -15,10 +15,11 @@ Contributors: Ultraleet, Dagcoin
 // define constants
 define('ULTRALEET_DAGPAY_EDD_PATH', __DIR__ . DIRECTORY_SEPARATOR);
 define('ULTRALEET_DAGPAY_EDD_SRC_PATH', ULTRALEET_DAGPAY_EDD_PATH . 'src' . DIRECTORY_SEPARATOR);
+define('ULTRALEET_DAGPAY_EDD_LIB_PATH', ULTRALEET_DAGPAY_EDD_PATH . 'lib' . DIRECTORY_SEPARATOR);
 define('ULTRALEET_DAGPAY_EDD_LANGUAGES_PATH', basename(ULTRALEET_DAGPAY_EDD_PATH) . DIRECTORY_SEPARATOR . 'languages' . DIRECTORY_SEPARATOR);
 
 // check PHP and WP version
-require_once(ULTRALEET_DAGPAY_EDD_PATH . 'lib' . DIRECTORY_SEPARATOR . 'UltraleetWPRequirementsChecker.php');
+require_once(ULTRALEET_DAGPAY_EDD_LIB_PATH . 'UltraleetWPRequirementsChecker.php');
 $requirementsChecker = new UltraleetWPRequirementsChecker(array(
     'title' => 'Dagpay for Easy Digital Downloads',
     'php' => '7.1',
@@ -28,6 +29,9 @@ $requirementsChecker = new UltraleetWPRequirementsChecker(array(
 if ($requirementsChecker->passes()) {
     // setup autoload
     require_once(__DIR__ . '/vendor/autoload.php');
+
+    // load dagpay client
+    require_once(ULTRALEET_DAGPAY_EDD_LIB_PATH . 'DagpayClient.php');
 
     // init plugin
     new \Ultraleet\DagpayEDD\Plugin();

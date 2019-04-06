@@ -2,8 +2,13 @@
 
 namespace Ultraleet\DagpayEDD;
 
+use DagpayClient;
+
 final class Plugin
 {
+    private $client;
+    private $settings;
+
     public function __construct()
     {
         $this->registerHooks();
@@ -163,5 +168,53 @@ final class Plugin
     private function getRedirectFailURI(): string
     {
         return edd_get_failed_transaction_uri();
+    }
+
+    /**
+     * Initialize Dagpay client if necessary and return it.
+     *
+     * @return DagpayClient
+     */
+    private function getClient(): DagpayClient
+    {
+        if (! isset($this->client)) {
+            $settings = $this->getSettings();
+            $this->client = new DagpayClient(
+                $settings['environmentId'],
+                $settings['userId'],
+                $settings['secret'],
+                edd_is_test_mode(),
+                'wordpress'
+            );
+        }
+        return $this->client;
+    }
+
+    /**
+     * Get Dagpay settings.
+     *
+     * @return array
+     */
+    private function getSettings(): array
+    {
+        if (! isset($this->settings)) {
+            $mode = $this->getMode();
+            $this->settings = [
+                'environmentId' => edd_get_option("dagpay_{$mode}_env_id"),
+                'userId' => edd_get_option("dagpay_{$mode}_user_id"),
+                'secret' => edd_get_option("dagpay_{$mode}_secret"),
+            ];
+        }
+        return $this->settings;
+    }
+
+    /**
+     * Get EDD payment mode (test/live).
+     *
+     * @return string
+     */
+    private function getMode(): string
+    {
+        return edd_is_test_mode() ? 'test' : 'live';
     }
 }
