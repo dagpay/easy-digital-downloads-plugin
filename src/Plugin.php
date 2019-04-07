@@ -214,7 +214,7 @@ final class Plugin
             edd_record_gateway_error(
                 __('Payment Error', 'easy-digital-downloads'),
                 sprintf(
-                    __('Payment creation failed before sending buyer to DagPay. Payment data: %s', 'dagpay-edd'),
+                    __('Payment creation failed before sending buyer to Dagpay. Payment data: %s', 'dagpay-edd'),
                     json_encode($paymentData)
                 ),
                 $paymentId
@@ -241,7 +241,7 @@ final class Plugin
                         json_encode($e->getMessage())
                     )
                 );
-                edd_debug_log('Exception trying to create DagPay invoice: ' . $e);
+                edd_debug_log('Exception trying to create Dagpay invoice: ' . $e);
             }
         }
     }
@@ -289,9 +289,9 @@ final class Plugin
      * Associate Dagcoin invoice ID with payment.
      *
      * @param int $paymentId
-     * @param int $invoiceId
+     * @param string $invoiceId
      */
-    private function setInvoiceId(int $paymentId, int $invoiceId)
+    private function setInvoiceId(int $paymentId, $invoiceId)
     {
         update_post_meta($paymentId, '_dagcoin_invoice_id', $invoiceId);
     }
@@ -302,7 +302,7 @@ final class Plugin
     public function actionVerifyPayment()
     {
         if (isset($_GET['edd-listener']) && $_GET['edd-listener'] == 'dagpay') {
-            edd_debug_log('DagPay IPN endpoint loaded');
+            edd_debug_log('Dagpay IPN endpoint loaded');
             $data = json_decode(file_get_contents('php://input'));
             $client = $this->getClient();
             $signature = $client->getInvoiceInfoSignature($data);
@@ -310,7 +310,6 @@ final class Plugin
                 exit;
             }
             $paymentId = (int)$data->paymentId;
-            $payment = new EDD_Payment($paymentId);
             switch ($data->state) {
                 case 'PAID':
                 case 'PAID_EXPIRED':
@@ -319,24 +318,15 @@ final class Plugin
                     edd_update_payment_status($paymentId, 'publish');
                     break;
                 case 'CANCELLED':
-                    if (get_post_meta($paymentId, '_dagcoin_invoice_id_cancelled', true) === $this->getInvoiceId(
-                            $paymentId
-                        )) {
-                        delete_post_meta($paymentId, '_dagcoin_invoice_id_cancelled');
-                    } else {
-                        $payment->update_status('revoked');
-                        $payment->save();
-                    }
-                    edd_insert_payment_note($payment, __('Dagcoin Invoice has been cancelled', 'dagpay-edd'));
+                    edd_update_payment_status($paymentId, 'revoked');
+                    edd_insert_payment_note($paymentId, __('Dagcoin Invoice has been cancelled', 'dagpay-edd'));
                     break;
                 case 'EXPIRED':
-                    $payment->update_status('failed');
-                    $payment->save();
+                    edd_update_payment_status($paymentId, 'failed');
                     edd_insert_payment_note($paymentId, __('Dagcoin Invoice has expired', 'dagpay-edd'));
                     break;
                 case 'FAILED':
-                    $payment->update_status('failed');
-                    $payment->save();
+                    edd_update_payment_status($paymentId, 'failed');
                     edd_insert_payment_note($paymentId, __('Dagcoin Invoice has failed', 'dagpay-edd'));
                     break;
             }
