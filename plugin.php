@@ -1,16 +1,28 @@
 <?php
-/*
-Plugin Name: Dagpay for Easy Digital Downloads
-Plugin URL: https://dagpay.io
-Description: Dagpay gateway for Easy Digital Downloads.
-Version: 1.0.0
-Author: Dagpay
-Author URI: https://dagpay.io
-License: GPL2
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
-Text Domain: dagpay-edd
-Contributors: Ultraleet, Dagcoin
-*/
+/**
+ * Dagpay for Easy Digital Downloads
+ *
+ * @author  Rene Aavik
+ * @license GPL-2.0+
+ * @link    https://github.com/ultraleettech/dagpay-easy-digital-downloads
+ * @package dagpay-edd
+ */
+
+/**
+ * Plugin Name: Dagpay for Easy Digital Downloads
+ * Plugin URL: https://github.com/ultraleettech/dagpay-easy-digital-downloads
+ * Description: Dagpay gateway for Easy Digital Downloads.
+ * Version: 1.0.0
+ * Author: Dagpay
+ * Author URI: https://dagpay.io
+ * License: GNU General Public License v2
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: dagpay-edd
+ * GitHub Plugin URI: https://github.com/ultraleettech/dagpay-easy-digital-downloads
+ * Requires WP: 4.6
+ * Requires PHP: 7.1
+ * Contributors: ultraleet, dagcoin975
+ */
 
 // define constants
 define('ULTRALEET_DAGPAY_EDD_PATH', __DIR__ . DIRECTORY_SEPARATOR);
