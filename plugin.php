@@ -35,7 +35,7 @@ require_once(ULTRALEET_DAGPAY_EDD_LIB_PATH . 'UltraleetWPRequirementsChecker.php
 $requirementsChecker = new UltraleetWPRequirementsChecker(array(
     'title' => 'Dagpay for Easy Digital Downloads',
     'php' => '7.1',
-    'wp' => '4.9',
+    'wp' => '4.6',
     'file' => __FILE__,
 ));
 if ($requirementsChecker->passes()) {
