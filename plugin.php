@@ -1,16 +1,7 @@
 <?php
 /**
- * Dagpay for Easy Digital Downloads
- *
- * @author  Rene Aavik
- * @license GPL-2.0+
- * @link    https://github.com/ultraleettech/dagpay-easy-digital-downloads
- * @package dagpay-edd
- */
-
-/**
  * Plugin Name: Dagpay for Easy Digital Downloads
- * Plugin URL: https://github.com/ultraleettech/dagpay-easy-digital-downloads
+ * Plugin URL: https://github.com/dagpay/easy-digital-downloads-plugin
  * Description: Dagpay gateway for Easy Digital Downloads.
  * Version: 1.0.0
  * Author: Dagpay
@@ -18,7 +9,7 @@
  * License: GNU General Public License v2
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: dagpay-edd
- * GitHub Plugin URI: https://github.com/ultraleettech/dagpay-easy-digital-downloads
+ * GitHub Plugin URI: https://github.com/dagpay/easy-digital-downloads-plugin
  * Requires WP: 4.6
  * Requires PHP: 7.1
  * Contributors: ultraleet, dagcoin975

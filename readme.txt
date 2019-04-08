@@ -7,6 +7,7 @@ Tested up to: 5.1.1
 Requires PHP: 7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
+GitHub Plugin URI: https://github.com/dagpay/easy-digital-downloads-plugin
 
 Dagpay helps you to accept lightning fast dagcoin payments directly from your eCommerce store.
 
@@ -54,3 +55,7 @@ You can test Dagpay in the test environment https://test.dagpay.io/ using the te
 If you have any issues setting up Dagpay for your business, you can contact us at support@dagpay.io
 
 Please note that when contacting Dagpay support, describe your issue in detail and attach screenshots if necessary for troubleshooting.
+
+= Where can I submit a bug report for this plugin? =
+
+Submit issues to our official [GitHub repository](https://github.com/dagpay/easy-digital-downloads-plugin).
