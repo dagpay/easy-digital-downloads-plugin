@@ -25,6 +25,9 @@ final class Plugin
         // load plugin text domain
         add_action('plugins_loaded', [$this, 'actionLoadTextDomain']);
 
+        // add action links
+        add_filter('plugin_action_links', [$this, 'filterPluginActionLinks'], 10, 2);
+
         // easy digital downloads hooks
         add_filter('edd_payment_gateways', [$this, 'filterRegisterGateway']);
         add_action('edd_dagpay_cc_form', '__return_false');
@@ -45,6 +48,22 @@ final class Plugin
             false,
             ULTRALEET_DAGPAY_EDD_LANGUAGES_PATH
         );
+    }
+
+    /**
+     * Add settings link to plugins page.
+     *
+     * @param array $links
+     * @param string $file
+     * @return array
+     */
+    public function filterPluginActionLinks(array $links, string $file): array
+    {
+        if ($file === ULTRALEET_DAGPAY_EDD_PLUGIN_BASENAME) {
+            $link = '<a href="' . get_bloginfo('wpurl') . '/wp-admin/edit.php?post_type=download&page=edd-settings&tab=gateways&section=dagpay">' . __('Settings', 'dagpay-edd') . '</a>';
+            array_unshift($links, $link);
+        }
+        return $links;
     }
 
     /**
