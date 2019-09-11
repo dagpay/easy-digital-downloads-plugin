@@ -3,7 +3,7 @@
  * Plugin Name: Dagpay for Easy Digital Downloads
  * Plugin URL: https://github.com/dagpay/easy-digital-downloads-plugin
  * Description: Dagpay gateway for Easy Digital Downloads.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Dagpay
  * Author URI: https://dagpay.io
  * License: GNU General Public License v2
