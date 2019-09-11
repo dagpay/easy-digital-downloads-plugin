@@ -36,6 +36,7 @@ final class Plugin
         add_action('edd_gateway_dagpay', [$this, 'actionProcessPurchase']);
         add_action('init', [$this, 'actionVerifyPayment']);
         add_filter('edd_payment_confirm_dagpay', [$this, 'filterConfirmPageContent']);
+        add_filter('edd_straight_to_gateway_purchase_data', [$this, 'filterStraightToGatewayPurchaseData']);
     }
 
     /**
@@ -75,7 +76,11 @@ final class Plugin
     public function filterRegisterGateway(array $gateways): array
     {
         $label = __('Dagpay', 'dagpay-edd');
-        $gateways['dagpay'] = ['admin_label' => $label, 'checkout_label' => $label];
+        $gateways['dagpay'] = [
+            'admin_label' => $label,
+            'checkout_label' => $label,
+            'supports' => ['buy_now'],
+        ];
         return $gateways;
     }
 
@@ -377,6 +382,20 @@ final class Plugin
             $content = ob_get_clean();
         }
         return $content;
+    }
+
+    /**
+     * Alter gateway for direct purchases.
+     *
+     * @since 1.0.1
+     *
+     * @param array $data
+     * @return array
+     */
+    public function filterStraightToGatewayPurchaseData(array $data): array
+    {
+        $data['gateway'] = 'dagpay';
+        return $data;
     }
 
     /**
